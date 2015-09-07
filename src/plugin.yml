@@ -1,0 +1,14 @@
+name: WorldScript
+main: com.nao20010128nao.WorldScript
+version: 1.0.0
+api: [1.0.0]
+load: STARTUP
+author: nao20010128nao
+description: Loads and runs plugins written in Javascript
+website: https://github.com/nao20010128nao
+permissions:
+ ws.*:
+  children:
+   ws.all:
+    description: "WorldScript permission (Reserved)"
+    default: op
