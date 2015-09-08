@@ -108,7 +108,7 @@ public class WorldScriptPluginLoader implements PluginLoader {
 	@Override
 	public Pattern[] getPluginFileFilters() {
 		// TODO 自動生成されたメソッド・スタブ
-		return new Pattern[] { Pattern.compile("/[^\\.]/") };
+		return new Pattern[] { Pattern.compile("\\.zip$") };
 	}
 
 	@Override
