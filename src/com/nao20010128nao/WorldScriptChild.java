@@ -2,17 +2,22 @@ package com.nao20010128nao;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
+import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
+import java.io.Reader;
+import java.io.StringReader;
 import java.nio.charset.Charset;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.zip.GZIPInputStream;
 
 import org.bukkit.Server;
 import org.bukkit.command.Command;
@@ -20,6 +25,7 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.event.Listener;
 import org.bukkit.generator.ChunkGenerator;
 import org.bukkit.plugin.PluginAwareness;
 import org.bukkit.plugin.PluginBase;
@@ -33,7 +39,50 @@ import com.avaje.ebean.EbeanServer;
 import com.google.common.base.Charsets;
 import com.google.common.io.ByteStreams;
 
-public class WorldScriptChild extends PluginBase {
+public class WorldScriptChild extends PluginBase implements Listener {
+	static String declareScript = "var Server,Plugin;";
+	static String setupScript;
+	static {
+		String ss = "";
+		// arguments: a is Server, b is WorldScriptChild (this)
+		ss += "function(a,b){";
+		ss += "    Server={";
+		ss += "        getServer:function(){";
+		ss += "            return a;";
+		ss += "        }";
+		ss += "    };";
+		ss += "";
+		ss += "    Plugin={";
+		ss += "        getMain:function(){";
+		ss += "            return b;";
+		ss += "        },";
+		ss += "        registerEvent:function(func,event){";
+		ss += "            Server.getServer().getPluginManager().registerEvent(Plugin.__convertClass(event),Plugin.getMain(),org.bukkit.event.EventPriority.NORMAL,Plugin__makeExecutor(func),Plugin.getMain(),true);";
+		ss += "        },";
+		ss += "        __convertClass:function(cl){";
+		ss += "            var strc=java.lang.Class.forName(\"java.lang.CharSequence\");";
+		ss += "            var clsc=java.lang.Class.forName(\"java.lang.Class\");";
+		ss += "            if(strc.isInstance(cl)){";
+		ss += "                return java.lang.Class.forName(c.toString());";
+		ss += "            }";
+		ss += "            if(clsc.isInstance(cl)){";
+		ss += "                return c;";
+		ss += "            }";
+		ss += "            throw new Error(\"Incorrect object\");";
+		ss += "        },";
+		ss += "        __makeExecutor:function(fu){";
+		ss += "            return new org.bukkit.event.EventExecutor({";
+		ss += "                execute:function(listener,event){";
+		ss += "                    fu(event);";
+		ss += "                }";
+		ss += "            });";
+		ss += "        }";
+		ss += "    };";
+		ss += "}";
+		/* delete all indents (all indents are from spaces, check it!) */
+		ss = ss.replace("    ", "");
+		setupScript = ss;
+	}
 	File dir, yml;
 	Set<File> scripts;
 	WorldScriptPluginLoader loader;
@@ -42,27 +91,42 @@ public class WorldScriptChild extends PluginBase {
 	PluginDescriptionFile desc;
 	Server server;
 	WorldScript parent;
-	EbeanServer ebean = null;
 	FileConfiguration newConfig = null;
 	File configFile = null;
 	boolean enabled = false;
-	private Scriptable thisObj;
 
 	public WorldScriptChild(File dir, File yml, Set<File> scripts,
-			WorldScriptPluginLoader loader, PluginDescriptionFile desc,
-			Server server) {
+			WorldScriptPluginLoader loader, PluginDescriptionFile desc) {
 		// TODO 自動生成されたコンストラクター・スタブ
+		this.server = parent.getServer();
+		getServer().getLogger().info("Preparing...");
 		this.dir = dir;
 		this.yml = yml;
 		this.scripts = Collections.unmodifiableSet(scripts);
 		this.loader = loader;
 		this.desc = desc;
-		this.server = server;
-		parent = (WorldScript) server.getPluginManager().getPlugin(
-				"WorldScript");
+		parent = WorldScript.instance.get();
 		jsPlayer = Context.getCurrentContext();
 		objective = jsPlayer.newObject(jsPlayer.initStandardObjects());
-		// getServer().getLogger().info("");
+		jsPlayer.evaluateString(objective, declareScript, "file", 0, this);
+		Function setup = jsPlayer.compileFunction(objective, setupScript,
+				"file", 0, this);
+		setup.call(jsPlayer, objective, objective, new Object[] { getServer(),
+				this });
+		for (File script : scripts) {
+			script = script.getAbsoluteFile();
+			getServer().getLogger().info("Evaluating: " + script.toString());
+			try {
+				jsPlayer.evaluateReader(objective, openReader(script),
+						script.toString(), 0, this);
+			} catch (IOException e) {
+				// TODO 自動生成された catch ブロック
+				e.printStackTrace();
+				getServer().getLogger().info(
+						"An error occured while evaluating: "
+								+ script.toString());
+			}
+		}
 	}
 
 	@Override
@@ -313,4 +377,25 @@ public class WorldScriptChild extends PluginBase {
 		}
 	}
 
+	private Reader openReader(File file) {
+		String s = file.toString();
+		if (s.endsWith(".js")) {
+			try {
+				return new FileReader(file);
+			} catch (FileNotFoundException e) {
+				// TODO 自動生成された catch ブロック
+				e.printStackTrace();
+			}
+		}
+		if (s.endsWith(".js.gz")) {
+			try {
+				return new InputStreamReader(new GZIPInputStream(
+						new FileInputStream(file)));
+			} catch (IOException e) {
+				// TODO 自動生成された catch ブロック
+				e.printStackTrace();
+			}
+		}
+		return new StringReader("");
+	}
 }
