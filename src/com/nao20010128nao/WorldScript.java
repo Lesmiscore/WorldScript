@@ -42,6 +42,7 @@ public class WorldScript extends JavaPlugin {
 	@Override
 	public void onEnable() {
 		// TODO 自動生成されたメソッド・スタブ
+		getDataFolder().mkdir();
 		loadSettings();
 		if (config.size() == 0) {
 			config.put("default-charset", "UTF-8");
