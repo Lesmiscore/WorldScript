@@ -4,7 +4,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
-import java.io.IOException;
 import java.io.Writer;
 import java.lang.ref.WeakReference;
 import java.util.HashMap;
@@ -71,13 +70,13 @@ public class WorldScript extends JavaPlugin {
 				}
 				config.put(data[0], data[1]);
 			}
-		} catch (IOException e) {
+		} catch (Throwable e) {
 			// TODO 自動生成された catch ブロック
 			e.printStackTrace();
 		} finally {
 			try {
 				read.close();
-			} catch (IOException e) {
+			} catch (Throwable e) {
 				// TODO 自動生成された catch ブロック
 				e.printStackTrace();
 			}
@@ -92,13 +91,13 @@ public class WorldScript extends JavaPlugin {
 			for (Map.Entry<String, String> d : config.entrySet()) {
 				write.write(d.getKey() + ":" + d.getValue() + "\n");
 			}
-		} catch (IOException e) {
+		} catch (Throwable e) {
 			// TODO 自動生成された catch ブロック
 			e.printStackTrace();
 		} finally {
 			try {
 				write.close();
-			} catch (IOException e) {
+			} catch (Throwable e) {
 				// TODO 自動生成された catch ブロック
 				e.printStackTrace();
 			}

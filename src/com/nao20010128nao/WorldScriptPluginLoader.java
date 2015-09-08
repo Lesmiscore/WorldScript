@@ -38,9 +38,9 @@ import org.bukkit.plugin.UnknownDependencyException;
 public class WorldScriptPluginLoader implements PluginLoader {
 	Server server;
 
-	public WorldScriptPluginLoader() {
+	public WorldScriptPluginLoader(Server server) {
 		// TODO 自動生成されたコンストラクター・スタブ
-		this.server = WorldScript.instance.get().getServer();
+		this.server = server;
 	}
 
 	@Override
