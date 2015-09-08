@@ -195,17 +195,26 @@ public class WorldScriptChild extends PluginBase {
 		if (filename == null) {
 			throw new IllegalArgumentException("Filename cannot be null");
 		}
-		File insideAssets = new File(getDataFolder(), "../assets/" + filename);
-		File insideResources = new File(getDataFolder(), "../resources/"
-				+ filename);
-		File raw = new File(getDataFolder(), "../" + filename);
+		File insideAssets = new File(dir, "assets/" + filename);
+		File insideResources = new File(dir, "assets/" + filename);
+		File raw = new File(dir, filename);
 		try {
 			if (insideAssets.exists() || insideAssets.isFile()) {
 				return new FileInputStream(insideAssets);
 			}
+		} catch (IOException e) {
+			// TODO 自動生成された catch ブロック
+			e.printStackTrace();
+		}
+		try {
 			if (insideResources.exists() || insideResources.isFile()) {
 				return new FileInputStream(insideResources);
 			}
+		} catch (IOException e) {
+			// TODO 自動生成された catch ブロック
+			e.printStackTrace();
+		}
+		try {
 			if (raw.exists() || raw.isFile()) {
 				return new FileInputStream(raw);
 			}
