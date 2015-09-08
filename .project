@@ -14,4 +14,11 @@
 	<natures>
 		<nature>org.eclipse.jdt.core.javanature</nature>
 	</natures>
+	<linkedResources>
+		<link>
+			<name>rhino</name>
+			<type>2</type>
+			<location>M:/MyDLs/rhino1_7R2/src</location>
+		</link>
+	</linkedResources>
 </projectDescription>
