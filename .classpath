@@ -7,7 +7,7 @@
 			<attribute name="javadoc_location" value="file:/G:/bukkitWS/javadoc-bukkit/"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry kind="lib" path="M:/MyDLs/rhino1_7R2/js.jar" sourcepath="M:/MyDLs/rhino1_7R2/src">
+	<classpathentry exported="true" kind="lib" path="M:/MyDLs/rhino1_7R2/js.jar" sourcepath="M:/MyDLs/rhino1_7R2/src">
 		<attributes>
 			<attribute name="javadoc_location" value="file:/M:/MyDLs/rhino1_7R2/javadoc/"/>
 		</attributes>
