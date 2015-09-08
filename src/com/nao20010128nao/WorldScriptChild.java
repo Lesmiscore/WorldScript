@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
-import java.io.FileReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -41,6 +40,7 @@ import com.google.common.io.ByteStreams;
 
 public class WorldScriptChild extends PluginBase implements Listener {
 	static String declareScript = "var Server,Plugin;";
+	static String onCommandScript = "function(s,c,l,a){if(onCommand){onCommand(s,c,l,a);}}";
 	static String setupScript;
 	static {
 		String ss = "";
@@ -367,8 +367,9 @@ public class WorldScriptChild extends PluginBase implements Listener {
 			String label, String[] args) {
 		// TODO 自動生成されたメソッド・スタブ
 		try {
-			return (boolean) ((Function) jsPlayer.compileString("onCommand",
-					"", 0, this)).call(jsPlayer, objective, objective,
+			Function f = jsPlayer.compileFunction(objective, onCommandScript,
+					"file", 0, objective);
+			return (boolean) f.call(jsPlayer, objective, objective,
 					new Object[] { sender, command, label, args });
 		} catch (Exception e) {
 			// TODO 自動生成された catch ブロック
@@ -379,9 +380,10 @@ public class WorldScriptChild extends PluginBase implements Listener {
 
 	private Reader openReader(File file) {
 		String s = file.toString();
+		Charset cs = Charset.forName(parent.config.get("default-charset"));
 		if (s.endsWith(".js")) {
 			try {
-				return new FileReader(file);
+				return new InputStreamReader(new FileInputStream(file), cs);
 			} catch (FileNotFoundException e) {
 				// TODO 自動生成された catch ブロック
 				e.printStackTrace();
@@ -390,7 +392,7 @@ public class WorldScriptChild extends PluginBase implements Listener {
 		if (s.endsWith(".js.gz")) {
 			try {
 				return new InputStreamReader(new GZIPInputStream(
-						new FileInputStream(file)));
+						new FileInputStream(file)), cs);
 			} catch (IOException e) {
 				// TODO 自動生成された catch ブロック
 				e.printStackTrace();
