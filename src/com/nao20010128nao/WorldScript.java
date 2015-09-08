@@ -22,8 +22,8 @@ public class WorldScript extends JavaPlugin {
 	@Override
 	public void onLoad() {
 		// TODO 自動生成されたメソッド・スタブ
+		Context.enter();
 		getServer().getPluginManager().registerInterface(
 				WorldScriptPluginLoader.class);
-		Context.enter();
 	}
 }
