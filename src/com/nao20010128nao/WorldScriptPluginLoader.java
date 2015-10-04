@@ -1,13 +1,14 @@
 package com.nao20010128nao;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
-import java.io.FilenameFilter;
+import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -15,6 +16,9 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.logging.Level;
 import java.util.regex.Pattern;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipException;
+import java.util.zip.ZipFile;
 
 import org.apache.commons.lang.Validate;
 import org.bukkit.Server;
@@ -34,8 +38,10 @@ import org.bukkit.plugin.PluginLoader;
 import org.bukkit.plugin.RegisteredListener;
 import org.bukkit.plugin.TimedRegisteredListener;
 import org.bukkit.plugin.UnknownDependencyException;
+import org.yaml.snakeyaml.error.YAMLException;
 
 public class WorldScriptPluginLoader implements PluginLoader {
+	static Map<String, ZipFile> files = new HashMap<>(10);
 	Server server;
 
 	public WorldScriptPluginLoader(Server server) {
@@ -52,14 +58,11 @@ public class WorldScriptPluginLoader implements PluginLoader {
 			throw new InvalidPluginException(file.getAbsolutePath()
 					+ " not found");
 		}
-		if (file.isFile()) {
-			throw new InvalidPluginException(file.getAbsolutePath()
-					+ " is a file");
+		ZipFile zf = openZipFile(file);
+		if (zf == null) {
+			throw new InvalidPluginException("Broken zip file");
 		}
-		File yml = new File(file, "plugin.yml");
-		if (!yml.exists()) {
-			throw new InvalidPluginException("plugin.yml not found");
-		}
+
 		PluginDescriptionFile desc;
 		try {
 			desc = getPluginDescription(file);
@@ -69,39 +72,60 @@ public class WorldScriptPluginLoader implements PluginLoader {
 			throw new InvalidPluginException(
 					"An error occured while loading the description", e);
 		}
-		Set<File> scripts = new HashSet<>(1);
-		Collections.addAll(scripts, file.listFiles(new FilenameFilter() {
-			@Override
-			public boolean accept(File dir, String name) {
-				// TODO 自動生成されたメソッド・スタブ
-				return name.endsWith(".js") | name.endsWith(".js.gz");
+		Set<String> scripts = new HashSet<>(1);
+		ZipEntry ze;
+		Enumeration<? extends ZipEntry> zee = zf.entries();
+		for (; null != (ze = zee.nextElement()); zee.hasMoreElements()) {
+			if (ze.getName().equalsIgnoreCase("plugin.yml")) {
+				continue;
 			}
-		}));
-		return new WorldScriptChild(file, yml, scripts, this, desc);
+			if (!(ze.getName().endsWith(".js") | ze.getName()
+					.endsWith(".js.gz"))) {
+				continue;
+			}
+			scripts.add(ze.getName());
+		}
+		return new WorldScriptChild(file, scripts, this, desc);
 	}
 
 	@Override
 	public PluginDescriptionFile getPluginDescription(File file)
 			throws InvalidDescriptionException {
-		// TODO 自動生成されたメソッド・スタブ
-		Objects.requireNonNull(file);
-		if (!file.exists()) {
-			throw new InvalidDescriptionException(file.getAbsolutePath()
-					+ " not found");
-		}
-		if (file.isFile()) {
-			throw new InvalidDescriptionException(file.getAbsolutePath()
-					+ " is a file");
-		}
-		File yml = new File(file, "plugin.yml");
-		if (!yml.exists()) {
-			throw new InvalidDescriptionException("plugin.yml not found");
-		}
+
+		ZipFile jar = null;
+		InputStream stream = null;
+
 		try {
-			return new PluginDescriptionFile(new FileInputStream(yml));
-		} catch (FileNotFoundException e) {
-			// TODO 自動生成された catch ブロック
-			return null;
+			jar = openZipFile(file);
+			ZipEntry entry = jar.getEntry("plugin.yml");
+
+			if (entry == null) {
+				throw new InvalidDescriptionException(
+						new FileNotFoundException(
+								"Jar does not contain plugin.yml"));
+			}
+
+			stream = jar.getInputStream(entry);
+
+			return new PluginDescriptionFile(stream);
+
+		} catch (IOException ex) {
+			throw new InvalidDescriptionException(ex);
+		} catch (YAMLException ex) {
+			throw new InvalidDescriptionException(ex);
+		} finally {
+			if (jar != null) {
+				try {
+					jar.close();
+				} catch (IOException e) {
+				}
+			}
+			if (stream != null) {
+				try {
+					stream.close();
+				} catch (IOException e) {
+				}
+			}
 		}
 	}
 
@@ -228,13 +252,30 @@ public class WorldScriptPluginLoader implements PluginLoader {
 	@Override
 	public void enablePlugin(Plugin plugin) {
 		// TODO 自動生成されたメソッド・スタブ
-
+		plugin.onEnable();
 	}
 
 	@Override
 	public void disablePlugin(Plugin plugin) {
 		// TODO 自動生成されたメソッド・スタブ
-
+		plugin.onDisable();
 	}
 
+	public ZipFile openZipFile(File s) {
+		if (files.containsKey(s.getAbsolutePath())) {
+			return files.get(s.getAbsolutePath());
+		}
+		try {
+			ZipFile toPut = new ZipFile(s);
+			files.put(s.getAbsolutePath(), toPut);
+			return toPut;
+		} catch (ZipException e) {
+			// TODO 自動生成された catch ブロック
+			e.printStackTrace();
+		} catch (IOException e) {
+			// TODO 自動生成された catch ブロック
+			e.printStackTrace();
+		}
+		return null;
+	}
 }

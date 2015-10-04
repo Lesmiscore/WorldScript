@@ -17,6 +17,7 @@ import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.zip.GZIPInputStream;
+import java.util.zip.ZipFile;
 
 import org.bukkit.Server;
 import org.bukkit.command.Command;
@@ -83,8 +84,8 @@ public class WorldScriptChild extends PluginBase implements Listener {
 		ss = ss.replace("    ", "");
 		setupScript = ss;
 	}
-	File dir, yml;
-	Set<File> scripts;
+	File dir;
+	Set<String> scripts;
 	WorldScriptPluginLoader loader;
 	Scriptable objective;
 	Context jsPlayer;
@@ -94,14 +95,14 @@ public class WorldScriptChild extends PluginBase implements Listener {
 	FileConfiguration newConfig = null;
 	File configFile = null;
 	boolean enabled = false;
+	ZipFile zf;
 
-	public WorldScriptChild(File dir, File yml, Set<File> scripts,
+	public WorldScriptChild(File pack, Set<String> scripts,
 			WorldScriptPluginLoader loader, PluginDescriptionFile desc) {
 		// TODO 自動生成されたコンストラクター・スタブ
 		this.server = parent.getServer();
 		getServer().getLogger().info("Preparing...");
-		this.dir = dir;
-		this.yml = yml;
+		this.dir = pack;
 		this.scripts = Collections.unmodifiableSet(scripts);
 		this.loader = loader;
 		this.desc = desc;
@@ -113,11 +114,26 @@ public class WorldScriptChild extends PluginBase implements Listener {
 				"file", 0, this);
 		setup.call(jsPlayer, objective, objective, new Object[] { getServer(),
 				this });
-		for (File script : scripts) {
-			script = script.getAbsoluteFile();
+		zf = loader.openZipFile(pack);
+		if (zf == null) {
+			getServer().getLogger().info(pack + " is invalid");
+			throw new RuntimeException("");
+		}
+		for (String script : scripts) {
+			InputStream is;
+			try {
+				is = zf.getInputStream(zf.getEntry(script));
+			} catch (IOException e1) {
+				// TODO 自動生成された catch ブロック
+				e1.printStackTrace();
+				getServer().getLogger().info(
+						"An error occured while loading: " + script.toString());
+				break;
+			}
 			getServer().getLogger().info("Evaluating: " + script.toString());
 			try {
-				jsPlayer.evaluateReader(objective, openReader(script),
+				jsPlayer.evaluateReader(objective,
+						openReader(is, script.endsWith(".gz")),
 						script.toString(), 0, this);
 			} catch (IOException e) {
 				// TODO 自動生成された catch ブロック
@@ -259,29 +275,25 @@ public class WorldScriptChild extends PluginBase implements Listener {
 		if (filename == null) {
 			throw new IllegalArgumentException("Filename cannot be null");
 		}
-		File insideAssets = new File(dir, "assets/" + filename);
-		File insideResources = new File(dir, "assets/" + filename);
-		File raw = new File(dir, filename);
+		String insideAssets = ("assets/" + filename).replace('\\', '/')
+				.replace("//", "/");
+		String insideResources = ("assets/" + filename).replace('\\', '/')
+				.replace("//", "/");
+		String raw = filename.replace('\\', '/').replace("//", "/");
 		try {
-			if (insideAssets.exists() || insideAssets.isFile()) {
-				return new FileInputStream(insideAssets);
-			}
+			return zf.getInputStream(zf.getEntry(insideAssets));
 		} catch (IOException e) {
 			// TODO 自動生成された catch ブロック
 			e.printStackTrace();
 		}
 		try {
-			if (insideResources.exists() || insideResources.isFile()) {
-				return new FileInputStream(insideResources);
-			}
+			return zf.getInputStream(zf.getEntry(insideResources));
 		} catch (IOException e) {
 			// TODO 自動生成された catch ブロック
 			e.printStackTrace();
 		}
 		try {
-			if (raw.exists() || raw.isFile()) {
-				return new FileInputStream(raw);
-			}
+			return zf.getInputStream(zf.getEntry(raw));
 		} catch (IOException e) {
 			// TODO 自動生成された catch ブロック
 			e.printStackTrace();
@@ -383,7 +395,7 @@ public class WorldScriptChild extends PluginBase implements Listener {
 		Charset cs = Charset.forName(parent.config.get("default-charset"));
 		if (s.endsWith(".js")) {
 			try {
-				return new InputStreamReader(new FileInputStream(file), cs);
+				return openReader(new FileInputStream(file), false);
 			} catch (FileNotFoundException e) {
 				// TODO 自動生成された catch ブロック
 				e.printStackTrace();
@@ -391,8 +403,22 @@ public class WorldScriptChild extends PluginBase implements Listener {
 		}
 		if (s.endsWith(".js.gz")) {
 			try {
-				return new InputStreamReader(new GZIPInputStream(
-						new FileInputStream(file)), cs);
+				return openReader(new FileInputStream(file), true);
+			} catch (IOException e) {
+				// TODO 自動生成された catch ブロック
+				e.printStackTrace();
+			}
+		}
+		return new StringReader("");
+	}
+
+	private Reader openReader(InputStream is, boolean gz) {
+		Charset cs = Charset.forName(parent.config.get("default-charset"));
+		if (!gz) {
+			return new InputStreamReader(is, cs);
+		} else {
+			try {
+				return new InputStreamReader(new GZIPInputStream(is), cs);
 			} catch (IOException e) {
 				// TODO 自動生成された catch ブロック
 				e.printStackTrace();
